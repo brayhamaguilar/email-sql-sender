@@ -1,67 +1,27 @@
-import mysql.connector
-from datetime import datetime, timedelta, timezone
-import smtplib
-from email.mime.text import MIMEText
+name: Email SQL Sender
 
-# Database connection info
-conn = mysql.connector.connect(
-    host="fdb1030.awardspace.net",
-    user="4629818_jbpainting",
-    password="Brayham@2025",
-    database="4629818_jbpainting"
-)
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # runs every 5 minutes
+  workflow_dispatch:
 
-cursor = conn.cursor(dictionary=True)
+jobs:
+  send_email:
+    runs-on: ubuntu-latest
 
-# Get current UTC time and 2 hours ago timestamp
-now_utc = datetime.now(timezone.utc)
-two_hours_ago = now_utc - timedelta(hours=2)
-two_hours_ago_str = two_hours_ago.strftime('%Y-%m-%d %H:%M:%S')
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-# Queries for new submissions in last 2 hours
-query_contact_form = "SELECT * FROM contact_form WHERE submitted_at >= %s"
-query_quote_requests = "SELECT * FROM quote_requests WHERE submitted_at >= %s"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-cursor.execute(query_contact_form, (two_hours_ago_str,))
-contacts = cursor.fetchall()
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mysql-connector-python
 
-cursor.execute(query_quote_requests, (two_hours_ago_str,))
-quotes = cursor.fetchall()
-
-cursor.close()
-conn.close()
-
-# Compose email content
-email_body = ""
-
-if contacts:
-    email_body += "New contact_form submissions:\n\n"
-    for c in contacts:
-        email_body += f"ID: {c['id']}\nName: {c['name']}\nPhone: {c['phone']}\nEmail: {c['email_address']}\nMessage: {c['message']}\nSubmitted At: {c['submitted_at']}\n\n"
-
-if quotes:
-    email_body += "New quote_requests submissions:\n\n"
-    for q in quotes:
-        email_body += f"ID: {q['id']}\nFull Name: {q['full_name']}\nEmail: {q['email']}\nPhone Number: {q['phone number']}\nProject Postcode: {q['project_postcode']}\nFile Name: {q['file_name']}\nSubmitted At: {q['submitted_at']}\n\n"
-
-if not email_body:
-    print("No new submissions in the last 2 hours.")
-    exit()
-
-# Email details
-from_email = "brayhamaguilar@pythonanywhere.com"  # your PythonAnywhere email or configured sender
-to_email = "mouhcine.amelhay55@gmail.com"
-subject = "New submissions in the last 2 hours"
-
-msg = MIMEText(email_body)
-msg['Subject'] = subject
-msg['From'] = from_email
-msg['To'] = to_email
-
-# Send the email via PythonAnywhere SMTP server
-try:
-    with smtplib.SMTP("smtp.pythonanywhere.com") as server:
-        server.sendmail(from_email, [to_email], msg.as_string())
-    print("Email sent successfully.")
-except Exception as e:
-    print("Failed to send email:", e)
+      - name: Run email script
+        run: python send_form_updates.py
