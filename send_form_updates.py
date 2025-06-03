@@ -60,8 +60,7 @@ try:
     conn.close()
 
 except Exception as e:
-    with open("error_log.txt", "w") as f:
-        f.write("Error:\n")
-        f.write(str(e) + "\n")
-        f.write(traceback.format_exc())
-    print("An error occurred, details saved in error_log.txt")
+    print("An error occurred:")
+    print(str(e))
+    print(traceback.format_exc())
+    exit(1)
